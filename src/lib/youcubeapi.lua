@@ -32,7 +32,7 @@ end
 -- Look at the [Documentation](https://commandcracker.github.io/YouCube/) for moor information
 -- Contact the server owner on Discord, when the server is down
 local servers = {
-    "wss://mc.beltboys.nl:5000"
+    "ws://mc.beltboys.nl:5000"
 }
 
 if settings then
