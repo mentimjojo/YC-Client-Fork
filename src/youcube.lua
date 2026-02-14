@@ -567,7 +567,7 @@ local function main()
     pcall(update_checker)
 
     if not args.URL then
-        print("Enter Url or Search Term:")
+        print("Enter Spotify URL, Youcube url or a search term (For playlists: Keypress R is repeat, A is previous, and D is next):")
         term.setTextColor(colors.lightGray)
         args.URL = read()
         term.setTextColor(colors.white)
