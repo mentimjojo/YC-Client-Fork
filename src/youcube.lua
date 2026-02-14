@@ -99,7 +99,6 @@ parser:flag "--nv" "--no-video"
     :description "Disables video."
     :target "no_video"
     :action "store_true"
-    :default True
 
 parser:flag "--na" "--no-audio"
     :description "Disables audio."
@@ -128,6 +127,9 @@ parser:option "--fps"
 -- stylua: ignore end
 
 local args = parser:parse({ ... })
+
+-- Set no video always true
+args.no_video = true
 
 if args.force_fps then
     args.force_fps = tonumber(args.force_fps)
