@@ -99,6 +99,7 @@ parser:flag "--nv" "--no-video"
     :description "Disables video."
     :target "no_video"
     :action "store_true"
+    :default true
 
 parser:flag "--na" "--no-audio"
     :description "Disables audio."
