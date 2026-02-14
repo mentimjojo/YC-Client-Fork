@@ -6,3 +6,9 @@ Installer: `wget run https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/ma
 ## Info
 
 The server this fork uses only supports audio, so spotify, youtube, etc. No video support. 
+
+
+# Server
+The server fork for this client fork.
+
+https://github.com/YC-Fork/YC-Server-Fork
