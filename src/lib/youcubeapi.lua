@@ -87,7 +87,7 @@ function API:detect_bestest_server(_server, _verbose)
             local websocket, websocket_error = websocket_with_timeout(server, nil, 5)
 
             if websocket ~= false then
-                term.write("Using the YouCube server: ")
+                term.write("Connected to YC-Fork-Client Server: ")
                 term.setTextColor(colors.blue)
                 print(server)
                 term.setTextColor(colors.white)
