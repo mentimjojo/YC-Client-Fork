@@ -141,8 +141,8 @@ if args.volume then
         parser:error("Volume must be a number")
     end
 
-    if args.volume > 100 then
-        parser:error("Volume cant be over 100")
+    if args.volume > 300 then
+        parser:error("Volume cant be over 300 (this will be 3.0 in mc with the speaker)")
     end
 
     if args.volume < 0 then
