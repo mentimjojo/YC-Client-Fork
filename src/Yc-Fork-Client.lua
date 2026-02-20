@@ -7,7 +7,7 @@ Github Repository: https://github.com/Commandcracker/YouCube
 License: GPL-3.0
 ]]
 
-local _VERSION = "0.1.0"
+local _VERSION = "0.1.1"
 
 -- Libraries - OpenLibrarieLoader v1.0.1 --
 
@@ -619,6 +619,7 @@ local function main()
 end
 
 main()
+
 
 
 
