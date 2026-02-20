@@ -25,7 +25,7 @@ local function is_lib(libs, lib)
     return false
 end
 
-local libs = { "youcubeapi", "numberformatter", "semver", "argparse", "string_pack" }
+local libs = { "serverapi", "numberformatter", "semver", "argparse", "string_pack" }
 local lib_paths = { ".", "./Yc-Fork-Client-Libs", "./apis", "./modules", "/", "/lib", "/apis", "/modules", "/Yc-Fork-Client-Libs" }
 
 -- LevelOS Support
@@ -176,12 +176,12 @@ local function get_audiodevices()
 
     local speakers = { peripheral.find("speaker") }
     for i = 1, #speakers do
-        audiodevices[#audiodevices + 1] = libs.youcubeapi.Speaker.new(speakers[i])
+        audiodevices[#audiodevices + 1] = libs.serverapi.Speaker.new(speakers[i])
     end
 
     local tapes = { peripheral.find("tape_drive") }
     for i = 1, #tapes do
-        audiodevices[#audiodevices + 1] = libs.youcubeapi.Tape.new(tapes[i])
+        audiodevices[#audiodevices + 1] = libs.serverapi.Tape.new(tapes[i])
     end
 
     if #audiodevices == 0 then
@@ -213,7 +213,7 @@ end
 
 -- main --
 
-local youcubeapi = libs.youcubeapi.API.new()
+local serverapi = libs.serverapi.API.new()
 local audiodevices = get_audiodevices()
 
 -- update check --
@@ -288,7 +288,7 @@ local function update_checker()
         can_update("yc-fork-client", _VERSION, client_version)
     end
 
-    local handshake = youcubeapi:handshake()
+    local handshake = serverapi:handshake()
     local server_version = versions.yc_fork_server and versions.yc_fork_server.version
     if server_version and libs.semver(handshake.server.version) < libs.semver(server_version) then
         print("Tell the server owner to update their server!")
@@ -364,16 +364,16 @@ local function play(url)
     print("Requesting media ...")
 
     if not args.no_video then
-        youcubeapi:request_media(url, term.getSize())
+        serverapi:request_media(url, term.getSize())
     else
-        youcubeapi:request_media(url)
+        serverapi:request_media(url)
     end
 
     local data
     local x, y = term.getCursorPos()
 
     repeat
-        data = youcubeapi:receive()
+        data = serverapi:receive()
         if data.action == "status" then
             os.queueEvent("youcube:status", data)
             term.setCursorPos(x, y)
@@ -430,13 +430,13 @@ local function play(url)
         sleep(2)
     end
 
-    local video_buffer = libs.youcubeapi.Buffer.new(
-        libs.youcubeapi.VideoFiller.new(youcubeapi, data.id, term.getSize()),
+    local video_buffer = libs.serverapi.Buffer.new(
+        libs.serverapi.VideoFiller.new(serverapi, data.id, term.getSize()),
         60 -- Most videos run on 30 fps, so we store 2s of video.
     )
 
-    local audio_buffer = libs.youcubeapi.Buffer.new(
-        libs.youcubeapi.AudioFiller.new(youcubeapi, data.id),
+    local audio_buffer = libs.serverapi.Buffer.new(
+        libs.serverapi.AudioFiller.new(serverapi, data.id),
         --[[
             We want to buffer 1024 chunks.
             One chunks is 16 bits.
@@ -458,7 +458,7 @@ local function play(url)
             local event = os.pullEventRaw()
 
             if event == "terminate" then
-                libs.youcubeapi.reset_term()
+                libs.serverapi.reset_term()
             end
 
             if not args.no_audio then
@@ -485,7 +485,7 @@ local function play(url)
             end
 
             os.queueEvent("youcube:vid_playing", data)
-            libs.youcubeapi.play_vid(video_buffer, args.force_fps, string_unpack)
+            libs.serverapi.play_vid(video_buffer, args.force_fps, string_unpack)
             os.queueEvent("youcube:vid_eof", data)
         end
     end
@@ -513,7 +513,7 @@ local function play(url)
                     back_buffer[1] = nil --remove it from the front of the buffer
                 end
                 if not args.no_video then
-                    libs.youcubeapi.reset_term()
+                    libs.serverapi.reset_term()
                 end
                 break
             end
@@ -521,7 +521,7 @@ local function play(url)
             if key == restart_key then
                 queue[#queue + 1] = url --add the current song to upcoming
                 if not args.no_video then
-                    libs.youcubeapi.reset_term()
+                    libs.serverapi.reset_term()
                 end
                 restart = true
                 break
@@ -563,7 +563,7 @@ local function play_playlist(playlist)
                         queue[#queue + 1] = prev --add previous song to upcoming
                     end
                     if not args.no_video then
-                        libs.youcubeapi.reset_term()
+                        libs.serverapi.reset_term()
                     end
                     break
                 end
@@ -577,7 +577,7 @@ local function play_playlist(playlist)
 end
 
 local function main()
-    youcubeapi:detect_bestest_server(args.server, args.verbose)
+    serverapi:detect_bestest_server(args.server, args.verbose)
     pcall(update_checker)
 
     if not args.URL then
@@ -609,16 +609,17 @@ local function main()
         play(args.URL)
     end
 
-    youcubeapi.websocket.close()
+    serverapi.websocket.close()
 
     if not args.no_video then
-        libs.youcubeapi.reset_term()
+        libs.serverapi.reset_term()
     end
 
     os.queueEvent("youcube:playback_ended")
 end
 
 main()
+
 
 
 

@@ -13,7 +13,7 @@ local BASE_URL = "https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/main/
 
 local files = {
     ["./Yc-Fork-Client.lua"] = BASE_URL .. "Yc-Fork-Client.lua",
-    ["./Yc-Fork-Client-Libs/youcubeapi.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/youcubeapi.lua",
+    ["./Yc-Fork-Client-Libs/serverapi.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/serverapi.lua",
     ["./Yc-Fork-Client-Libs/numberformatter.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/numberformatter.lua",
     ["./Yc-Fork-Client-Libs/semver.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/semver.lua",
     ["./Yc-Fork-Client-Libs/argparse.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/argparse.lua",
@@ -109,4 +109,5 @@ for path, download_url in pairs(files) do
     term.setTextColour(colors.lime)
     print(('Downloaded "%s"'):format(path))
 end
+
 

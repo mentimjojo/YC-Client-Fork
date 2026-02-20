@@ -1,19 +1,19 @@
---[[- Lua library for accessing [YouCub's API](https://commandcracker.github.io/YouCube/)
-    @module youcubeapi
+--[[- Lua library for accessing [YC-Fork's API](https://commandcracker.github.io/YC-Forke/)
+    @module serverapi
 ]]
 
---[[ youcubeapi.lua
+--[[ serverapi.lua
 _   _ ____ _  _ ____ _  _ ___  ____ ____ ___  _
  \_/  |  | |  | |    |  | |__] |___ |__| |__] |
   |   |__| |__| |___ |__| |__] |___ |  | |    |
 ]]
 
---[[- "wrapper" for accessing [YouCub's API](https://commandcracker.github.io/YouCube/)
+--[[- "wrapper" for accessing [YC-Fork's API](https://commandcracker.github.io/YC-Forke/)
     @type API
     @usage Example:
 
-        local youcubeapi  = require("youcubeapi")
-        local api         = youcubeapi.API.new()
+        local serverapi  = require("serverapi")
+        local api         = serverapi.API.new()
         api:detect_bestest_server()
         api:request_media(url)
         local data = api.websocket.receive()
@@ -29,7 +29,7 @@ function API.new(websocket)
     }, { __index = API })
 end
 
--- Look at the [Documentation](https://commandcracker.github.io/YouCube/) for moor information
+-- Look at the [Documentation](https://commandcracker.github.io/YC-Forke/) for moor information
 -- Contact the server owner on Discord, when the server is down
 local servers = {
     "wss://dev.music.papi.beltboys.nl",
@@ -71,7 +71,7 @@ local function websocket_with_timeout(_url, _headers, _timeout)
     return http.websocket(_url, _headers)
 end
 
---- Connects to a YouCub Server
+--- Connects to a YC-Fork Server
 function API:detect_bestest_server(_server, _verbose)
     if _server then
         table.insert(servers, 1, _server)
@@ -117,7 +117,7 @@ function API:detect_bestest_server(_server, _verbose)
     end
 end
 
---- Receive data from The YouCub Server
+--- Receive data from The YC-Fork Server
 -- @tparam string filter action filter
 -- @treturn table retval data
 function API:receive(filter)
@@ -150,7 +150,7 @@ function API:receive(filter)
     return data
 end
 
---- Send data to The YouCub Server
+--- Send data to The YC-Fork Server
 -- @tparam table data data to send
 function API:send(data)
     local status, retval = pcall(self.websocket.send, textutils.serialiseJSON(data))
@@ -286,9 +286,9 @@ end
     @type Speaker
     @usage Example:
 
-        local youcubeapi  = require("youcubeapi")
+        local serverapi  = require("serverapi")
         local speaker     = peripheral.find("speaker")
-        local audiodevice = youcubeapi.Speaker.new(speaker)
+        local audiodevice = serverapi.Speaker.new(speaker)
 ]]
 local Speaker = {}
 
@@ -329,9 +329,9 @@ end
     @type Tape
     @usage Example:
 
-        local youcubeapi  = require("youcubeapi")
+        local serverapi  = require("serverapi")
         local tape_drive  = peripheral.find("tape_drive")
-        local audiodevice = youcubeapi.Tape.new(tape_drive)
+        local audiodevice = serverapi.Tape.new(tape_drive)
 ]]
 local Tape = {}
 
@@ -404,18 +404,18 @@ end
 local AudioFiller = {}
 
 --- Create's a new AudioFiller instance.
--- @tparam API youcubeapi API object
+-- @tparam API serverapi API object
 -- @tparam string id Media id
 -- @treturn AudioFiller|Filler instance
-function AudioFiller.new(youcubeapi, id)
+function AudioFiller.new(serverapi, id)
     local self = {
         id = id,
         chunkindex = 0,
-        youcubeapi = youcubeapi,
+        serverapi = serverapi,
     }
 
     function self:next()
-        local response = self.youcubeapi:get_chunk(self.chunkindex, self.id)
+        local response = self.serverapi:get_chunk(self.chunkindex, self.id)
         self.chunkindex = self.chunkindex + 1
         return response
     end
@@ -429,22 +429,22 @@ end
 local VideoFiller = {}
 
 --- Create's a new VideoFiller instance.
--- @tparam API youcubeapi API object
+-- @tparam API serverapi API object
 -- @tparam string id Media id
 -- @tparam number width Video width
 -- @tparam number height Video height
 -- @treturn VideoFiller|Filler instance
-function VideoFiller.new(youcubeapi, id, width, height)
+function VideoFiller.new(serverapi, id, width, height)
     local self = {
         id = id,
         width = width,
         height = height,
         tracker = 0,
-        youcubeapi = youcubeapi,
+        serverapi = serverapi,
     }
 
     function self:next()
-        local response = self.youcubeapi:get_vid(self.tracker, self.id, self.width, self.height)
+        local response = self.serverapi:get_vid(self.tracker, self.id, self.width, self.height)
         for i = 1, #response.lines do
             self.tracker = self.tracker + #response.lines[i] + 1
         end
@@ -621,14 +621,14 @@ local function play_vid(buffer, force_fps, string_unpack)
 end
 
 return {
-    --- "Metadata" - [YouCube API](https://commandcracker.github.io/YouCube/) Version
+    --- "Metadata" - [YC-Forke API](https://commandcracker.github.io/YC-Forke/) Version
     _API_VERSION = "0.0.0-poc.1.0.0",
     --- "Metadata" - Library Version
     _VERSION = "0.0.0-poc.1.4.2",
     --- "Metadata" - Description
-    _DESCRIPTION = "Library for accessing YouCub's API",
+    _DESCRIPTION = "Library for accessing YC-Fork's API",
     --- "Metadata" - Homepage / Url
-    _URL = "https://github.com/Commandcracker/YouCube",
+    _URL = "https://github.com/Commandcracker/YC-Forke",
     --- "Metadata" - License
     _LICENSE = "GPL-3.0",
     API = API,
@@ -643,6 +643,7 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
 
 
 
