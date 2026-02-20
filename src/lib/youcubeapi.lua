@@ -87,11 +87,17 @@ function API:detect_bestest_server(_server, _verbose)
             local websocket, websocket_error = websocket_with_timeout(server, nil, 5)
 
             if websocket ~= false then
-                term.write("Connected to YC-Fork-Client Server: ")
+                self.websocket = websocket
+                local handshake = self:handshake()
+                self.client_id = handshake.client_id
+                term.write("Connected to YC-Fork-Client Server")
+                if self.client_id then
+                    term.write(" with client-id " .. self.client_id)
+                end
+                term.write(": ")
                 term.setTextColor(colors.blue)
                 print(server)
                 term.setTextColor(colors.white)
-                self.websocket = websocket
                 break
             elseif i == #servers then
                 error(websocket_error)
@@ -632,3 +638,4 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+

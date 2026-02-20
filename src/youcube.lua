@@ -87,7 +87,7 @@ parser:flag "-v" "--verbose"
     :action "store_true"
 
 parser:option "-V" "--volume"
-    :description "Sets the volume of the audio. A value from 0-100"
+    :description "Sets the volume of the audio. A value from 0-300 (default 300)"
     :target "volume"
 
 parser:option "-s" "--server"
@@ -140,16 +140,18 @@ if args.volume then
     if args.volume == nil then
         parser:error("Volume must be a number")
     end
-
-    if args.volume > 300 then
-        parser:error("Volume cant be over 300 (this will be 3.0 in mc with the speaker)")
-    end
-
-    if args.volume < 0 then
-        parser:error("Volume cant be below 0")
-    end
-    args.volume = args.volume / 100
+else
+    args.volume = 300
 end
+
+if args.volume > 300 then
+    parser:error("Volume cant be over 300 (this will be 3.0 in mc with the speaker)")
+end
+
+if args.volume < 0 then
+    parser:error("Volume cant be below 0")
+end
+args.volume = args.volume / 100
 
 if #args.URL > 0 then
     args.URL = table.concat(args.URL, " ")
@@ -617,6 +619,7 @@ local function main()
 end
 
 main()
+
 
 
 
