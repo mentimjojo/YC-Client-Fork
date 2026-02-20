@@ -91,18 +91,16 @@ function API:detect_bestest_server(_server, _verbose)
                 self.websocket = websocket
                 local handshake = self:handshake()
                 self.client_id = handshake.client_id
-                local short_id = nil
-                if self.client_id then
-                    short_id = self.client_id:sub(-6)
-                end
-                term.write("Connected")
-                if short_id then
-                    term.write(" (id " .. short_id .. ")")
-                end
-                term.write(": ")
+                term.write("Connected: ")
                 term.setTextColor(colors.blue)
                 print(server)
                 term.setTextColor(colors.white)
+                if self.client_id then
+                    term.write("Client id: ")
+                    term.setTextColor(colors.lightGray)
+                    print(self.client_id)
+                    term.setTextColor(colors.white)
+                end
                 break
             elseif i == #servers then
                 error(websocket_error)
@@ -643,6 +641,7 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
 
 
 
