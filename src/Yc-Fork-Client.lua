@@ -214,6 +214,7 @@ end
 -- main --
 
 local serverapi = libs.serverapi.API.new()
+serverapi.client_version = _VERSION
 local audiodevices = get_audiodevices()
 
 -- update check --
@@ -619,6 +620,8 @@ local function main()
 end
 
 main()
+
+
 
 
 

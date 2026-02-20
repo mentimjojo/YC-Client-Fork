@@ -90,6 +90,14 @@ function API:detect_bestest_server(_server, _verbose)
             if websocket ~= false then
                 self.websocket = websocket
                 local handshake = self:handshake()
+                if handshake.action ~= "handshake" then
+                    self.websocket.close()
+                    error("Server rejected connection due to version mismatch")
+                end
+                if self.client_version and handshake.server and handshake.server.version ~= self.client_version then
+                    self.websocket.close()
+                    error("Server version mismatch")
+                end
                 self.client_id = handshake.client_id
                 term.write("Connected: ")
                 term.setTextColor(colors.blue)
@@ -249,6 +257,7 @@ end
 function API:handshake()
     self:send({
         ["action"] = "handshake",
+        ["client_version"] = self.client_version,
     })
     return self:receive("handshake")
 end
@@ -641,6 +650,7 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
 
 
 
