@@ -7,7 +7,7 @@ Github Repository: https://github.com/Commandcracker/YouCube
 License: GPL-3.0
 ]]
 
-local _VERSION = "0.0.0-poc.1.1.2"
+local _VERSION = "0.1.0"
 
 -- Libraries - OpenLibrarieLoader v1.0.1 --
 
@@ -217,7 +217,7 @@ local audiodevices = get_audiodevices()
 -- update check --
 
 local function get_versions()
-    local url = "https://raw.githubusercontent.com/CC-YouCube/installer/main/versions.json"
+    local url = "https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/main/versions.json"
 
     -- Check if the URL is valid
     local ok, err = http.checkURL(url)
@@ -281,36 +281,16 @@ local function update_checker()
         return
     end
 
-    can_update("youcube", _VERSION, versions.client.version)
-    can_update("youcubeapi", libs.youcubeapi._VERSION, versions.client.libraries.youcubeapi.version)
-    can_update("numberformatter", libs.numberformatter._VERSION, versions.client.libraries.numberformatter.version)
-    can_update("semver", tostring(libs.semver._VERSION), versions.client.libraries.semver.version)
-    can_update("argparse", libs.argparse.version, versions.client.libraries.argparse.version)
+    local client_version = versions.yc_fork_client and versions.yc_fork_client.version
+    if client_version then
+        can_update("yc-fork-client", _VERSION, client_version)
+    end
 
     local handshake = youcubeapi:handshake()
-
-    if libs.semver(handshake.server.version) < libs.semver(versions.server.version) then
+    local server_version = versions.yc_fork_server and versions.yc_fork_server.version
+    if server_version and libs.semver(handshake.server.version) < libs.semver(server_version) then
         print("Tell the server owner to update their server!")
-        write_outdated(handshake.server.version, versions.server.version)
-    end
-
-    if not libs.semver(libs.youcubeapi._API_VERSION) ^ libs.semver(handshake.api.version) then
-        print("Client is not compatible with server")
-        write_colored(libs.youcubeapi._API_VERSION, colors.red)
-        write_colored(" ^ ", colors.lightGray)
-        write_colored(handshake.api.version, colors.red)
-        term.setTextColor(colors.white)
-        new_line()
-    end
-
-    if libs.semver(libs.youcubeapi._API_VERSION) < libs.semver(versions.api.version) then
-        print("Your client is using an outdated API version")
-        write_outdated(libs.youcubeapi._API_VERSION, versions.api.version)
-    end
-
-    if libs.semver(handshake.api.version) < libs.semver(versions.api.version) then
-        print("The server is using an outdated API version")
-        write_outdated(libs.youcubeapi._API_VERSION, versions.api.version)
+        write_outdated(handshake.server.version, server_version)
     end
 end
 
@@ -599,7 +579,7 @@ local function main()
     pcall(update_checker)
 
     if not args.URL then
-        print("Enter Spotify URL, Youtube url or a search term (For playlists: Keypress R is repeat, A is previous, and D is next):")
+        print("Enter a URL or search term (YouTube/Spotify/live streams supported). Controls: R=repeat, A=previous, D=next.")
         term.setTextColor(colors.lightGray)
         args.URL = read()
         term.setTextColor(colors.white)
@@ -637,6 +617,9 @@ local function main()
 end
 
 main()
+
+
+
 
 
 
