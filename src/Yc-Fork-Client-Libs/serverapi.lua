@@ -133,7 +133,7 @@ function API:receive(filter)
     end
 
     if retval == nil then
-        error("Received empty message or max message size exceeded")
+        error("Outdated Yc-Fork-Client, please update: https://github.com/YC-Fork/YC-Client-Fork")
     end
 
     local data, err = textutils.unserialiseJSON(retval)
@@ -650,6 +650,7 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
 
 
 
