@@ -90,9 +90,13 @@ function API:detect_bestest_server(_server, _verbose)
                 self.websocket = websocket
                 local handshake = self:handshake()
                 self.client_id = handshake.client_id
-                term.write("Connected to YC-Fork-Client Server")
+                local short_id = nil
                 if self.client_id then
-                    term.write(" with client-id " .. self.client_id)
+                    short_id = self.client_id:sub(-6)
+                end
+                term.write("Connected")
+                if short_id then
+                    term.write(" (id " .. short_id .. ")")
                 end
                 term.write(": ")
                 term.setTextColor(colors.blue)
@@ -638,4 +642,5 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
 
