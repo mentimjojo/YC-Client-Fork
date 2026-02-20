@@ -123,7 +123,7 @@ end
 function API:receive(filter)
     local status, retval = pcall(self.websocket.receive)
     if not status then
-        error("Lost connection to server\n" .. retval)
+        error("Connection to server has been lost, reopen yc-fork-client.")
     end
 
     if retval == nil then
@@ -155,7 +155,7 @@ end
 function API:send(data)
     local status, retval = pcall(self.websocket.send, textutils.serialiseJSON(data))
     if not status then
-        error("Lost connection to server\n" .. retval)
+        error("Connection to server has been lost, reopen yc-fork-client.")
     end
 end
 
@@ -643,5 +643,13 @@ return {
     play_vid = play_vid,
     reset_term = reset_term,
 }
+
+
+
+
+
+
+
+
 
 

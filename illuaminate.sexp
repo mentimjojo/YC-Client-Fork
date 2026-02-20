@@ -70,7 +70,7 @@
 ;; Controls documentation generation.
 (doc
   ;; The path(s) where modules are located. This is used for guessing the module name of files, it is ignored when an explicit @module annotation is provided.
-  (library-path src/lib)
+  (library-path src/Yc-Fork-Client-Libs)
   
   ;; A list of custom module kinds and their display names.
   (module-kinds)
@@ -111,6 +111,7 @@
   ;; Whether to create an index.json file, with a dump of all terms. This may be useful for querying externally.
   (json-index true))
 
-(at /src/lib/semver.lua(linters -all))
-(at /src/lib/argparse.lua(linters -all))
-(at /src/lib/string_pack.lua(linters -all))
+(at /src/Yc-Fork-Client-Libs/semver.lua(linters -all))
+(at /src/Yc-Fork-Client-Libs/argparse.lua(linters -all))
+(at /src/Yc-Fork-Client-Libs/string_pack.lua(linters -all))
+
