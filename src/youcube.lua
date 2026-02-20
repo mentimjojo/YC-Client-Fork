@@ -314,13 +314,16 @@ local function update_checker()
     end
 end
 
-local function play_audio(buffer, title)
+local function play_audio(buffer, title, on_first_chunk)
     for i = 1, #audiodevices do
         local audiodevice = audiodevices[i]
         audiodevice:reset()
         audiodevice:setLabel(title)
         audiodevice:setVolume(args.volume)
     end
+
+
+    local notified = false
 
     while true do
         local chunk = buffer:next()
@@ -341,6 +344,13 @@ local function play_audio(buffer, title)
 
             parallel.waitForAll(table.unpack(play_functions))
             return
+        end
+
+        if not notified then
+            notified = true
+            if on_first_chunk then
+                on_first_chunk()
+            end
         end
 
         local write_functions = {}
@@ -398,10 +408,32 @@ local function play(url)
         error(data.message)
     end
 
-    term.write("Playing: ")
-    term.setTextColor(colors.lime)
-    print(data.title)
-    term.setTextColor(colors.white)
+    local buffer_x, buffer_y
+
+    local function announce_playing()
+        local cur_x, cur_y = term.getCursorPos()
+        if buffer_x and buffer_y then
+            term.setCursorPos(buffer_x, buffer_y)
+            term.clearLine()
+        end
+        term.write("Playing: ")
+        term.setTextColor(colors.lime)
+        print(data.title)
+        term.setTextColor(colors.white)
+        if buffer_x and buffer_y then
+            term.setCursorPos(cur_x, cur_y)
+        end
+    end
+
+    if args.no_audio then
+        announce_playing()
+    else
+        buffer_x, buffer_y = term.getCursorPos()
+        term.write("Buffering: ")
+        term.setTextColor(colors.lightGray)
+        print(data.title)
+        term.setTextColor(colors.white)
+    end
 
     if data.like_count then
         print("Likes: " .. libs.numberformatter.compact(data.like_count))
@@ -479,7 +511,7 @@ local function play(url)
     local function _play_audio()
         if not args.no_audio then
             os.queueEvent("youcube:audio_playing", data)
-            play_audio(audio_buffer, data.title)
+            play_audio(audio_buffer, data.title, announce_playing)
             os.queueEvent("youcube:audio_eof", data)
         end
     end
@@ -605,3 +637,6 @@ local function main()
 end
 
 main()
+
+
+
