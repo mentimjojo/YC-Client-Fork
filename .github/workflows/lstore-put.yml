@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Rename main file 📄
-        run: mv src/Yc-Fork-Client.lua src/main.lua
+        run: mv src/yc-fork-client.lua src/main.lua
 
       - name: Publish Package 🚀
         uses: Commandcracker/lstore-put@v2

@@ -12,7 +12,7 @@ License: GPL-3.0
 local BASE_URL = "https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/main/src/"
 
 local files = {
-    ["./Yc-Fork-Client.lua"] = BASE_URL .. "Yc-Fork-Client.lua",
+    ["./yc-fork-client.lua"] = BASE_URL .. "yc-fork-client.lua",
     ["./Yc-Fork-Client-Libs/serverapi.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/serverapi.lua",
     ["./Yc-Fork-Client-Libs/numberformatter.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/numberformatter.lua",
     ["./Yc-Fork-Client-Libs/semver.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/semver.lua",
