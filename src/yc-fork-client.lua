@@ -75,7 +75,7 @@ local parser = libs.argparse {
     help_max_width = ({ term.getSize() })[1],
     name = get_program_name()
 }
-    :description "Official YouCube client for accessing media from services like YouTube"
+    :description "Official Yc-Fork-Client for accessing media from services like Youtube, Spotify, Twitch, etc."
 
 parser:argument "URL"
     :args "*"
@@ -127,9 +127,6 @@ parser:option "--fps"
 -- stylua: ignore end
 
 local args = parser:parse({ ... })
-
--- Set no video always true
-args.no_video = true
 
 if args.force_fps then
     args.force_fps = tonumber(args.force_fps)
