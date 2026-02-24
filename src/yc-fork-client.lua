@@ -360,32 +360,44 @@ local back_key = settings.get("youcube.keys.back") or keys.a
 local function play(url)
     restart = false
     print("Requesting media ...")
+    local function request_media_once()
+        if not args.no_video then
+            serverapi:request_media(url, term.getSize())
+        else
+            serverapi:request_media(url)
+        end
 
-    if not args.no_video then
-        serverapi:request_media(url, term.getSize())
-    else
-        serverapi:request_media(url)
+        local data
+        local x, y = term.getCursorPos()
+
+        while true do
+            data = serverapi:receive()
+            if data.action == "status" then
+                os.queueEvent("youcube:status", data)
+                term.setCursorPos(x, y)
+                term.clearLine()
+                term.write("Status: ")
+                write_colored(data.message, colors.green)
+                term.setTextColor(colors.white)
+            elseif data.action == "error" then
+                return nil, data
+            else
+                new_line()
+            end
+
+            if data.action == "media" then
+                return data, nil
+            end
+        end
     end
 
-    local data
-    local x, y = term.getCursorPos()
-
-    repeat
-        data = serverapi:receive()
-        if data.action == "status" then
-            os.queueEvent("youcube:status", data)
-            term.setCursorPos(x, y)
-            term.clearLine()
-            term.write("Status: ")
-            write_colored(data.message, colors.green)
-            term.setTextColor(colors.white)
-        else
-            new_line()
-        end
-    until data.action == "media"
-
-    if data.action == "error" then
-        error(data.message)
+    local data, err = request_media_once()
+    if err and err.message == "Live video is not supported." and not args.no_video then
+        args.no_video = true
+        data, err = request_media_once()
+    end
+    if err then
+        error(err.message)
     end
 
     local buffer_x, buffer_y
