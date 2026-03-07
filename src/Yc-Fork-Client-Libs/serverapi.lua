@@ -306,6 +306,12 @@ if status then
     decoder = dfpwm.make_decoder()
 end
 
+local function get_decoder()
+    if dfpwm then
+        return dfpwm.make_decoder()
+    end
+end
+
 --- Create's a new Tape instance.
 -- @tparam speaker speaker The speaker
 -- @treturn AudioDevice|Speaker instance
@@ -322,8 +328,11 @@ function Speaker.new(speaker)
         self.volume = volume
     end
 
-    function self:write(chunk)
-        local buffer = decoder(chunk)
+    function self:write(chunk, pcm)
+        local buffer = pcm
+        if not buffer then
+            buffer = decoder(chunk)
+        end
         while not self.speaker.playAudio(buffer, self.volume) do
             os.pullEvent("speaker_audio_empty")
         end
@@ -649,18 +658,5 @@ return {
     Buffer = Buffer,
     play_vid = play_vid,
     reset_term = reset_term,
+    get_decoder = get_decoder,
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

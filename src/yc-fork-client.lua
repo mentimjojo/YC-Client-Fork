@@ -302,47 +302,90 @@ local function play_audio(buffer, title, on_first_chunk)
         audiodevice:setVolume(args.volume)
     end
 
+    local decoder = libs.serverapi.get_decoder()
+    local chunks = {}
+    local write_index = 1
+    local cleaned_up_until = 1
+    local cursors = {}
+    for i = 1, #audiodevices do
+        cursors[i] = 1
+    end
 
     local notified = false
+    local eof = false
 
-    while true do
-        local chunk = buffer:next()
-
-        -- Adjust buffer size on first chunk
-        if buffer.filler.chunkindex == 1 then
-            buffer.size = math.ceil(1024 / (#chunk / 16))
-        end
-
-        if chunk == "" then
-            local play_functions = {}
-            for i = 1, #audiodevices do
-                local audiodevice = audiodevices[i]
-                play_functions[#play_functions + 1] = function()
-                    audiodevice:play()
+    local function producer()
+        while true do
+            local min_cursor = cursors[1]
+            for i = 2, #cursors do
+                if cursors[i] < min_cursor then
+                    min_cursor = cursors[i]
                 end
             end
 
-            parallel.waitForAll(table.unpack(play_functions))
-            return
-        end
+            for i = cleaned_up_until, min_cursor - 1 do
+                chunks[i] = nil
+            end
+            cleaned_up_until = min_cursor
 
-        if not notified then
-            notified = true
-            if on_first_chunk then
-                on_first_chunk()
+            if write_index - min_cursor > 32 then
+                os.pullEvent("chunk_consumed")
+            else
+                local chunk = buffer:next()
+
+                if buffer.filler.chunkindex == 1 then
+                    buffer.size = math.ceil(1024 / (#chunk / 16))
+                end
+
+                if chunk == "" then
+                    eof = true
+                    os.queueEvent("new_audio_chunk")
+                    return
+                end
+
+                if not notified then
+                    notified = true
+                    if on_first_chunk then
+                        on_first_chunk()
+                    end
+                end
+
+                local pcm
+                if decoder then
+                    pcm = decoder(chunk)
+                end
+
+                chunks[write_index] = { chunk = chunk, pcm = pcm }
+                write_index = write_index + 1
+                os.queueEvent("new_audio_chunk")
             end
         end
-
-        local write_functions = {}
-        for i = 1, #audiodevices do
-            local audiodevice = audiodevices[i]
-            table.insert(write_functions, function()
-                audiodevice:write(chunk)
-            end)
-        end
-
-        parallel.waitForAll(table.unpack(write_functions))
     end
+
+    local consumers = {}
+    for i = 1, #audiodevices do
+        local audiodevice = audiodevices[i]
+        consumers[i] = function()
+            while true do
+                if cursors[i] < write_index then
+                    local data = chunks[cursors[i]]
+                    if data then
+                        audiodevice:write(data.chunk, data.pcm)
+                    end
+                    cursors[i] = cursors[i] + 1
+                    os.queueEvent("chunk_consumed")
+                else
+                    if eof then
+                        audiodevice:play()
+                        return
+                    end
+                    os.pullEvent("new_audio_chunk")
+                end
+            end
+        end
+    end
+
+    parallel.waitForAll(producer, table.unpack(consumers))
 end
 
 -- #region playback controll vars
@@ -629,15 +672,3 @@ local function main()
 end
 
 main()
-
-
-
-
-
-
-
-
-
-
-
-
