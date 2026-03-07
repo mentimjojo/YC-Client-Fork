@@ -328,7 +328,8 @@ local function play_audio(buffer, title, on_first_chunk)
             end
             cleaned_up_until = min_cursor
 
-            if write_index - min_cursor > 32 then
+            -- Reduced buffer size from 32 to 2 to force tight synchronization
+            if write_index - min_cursor > 2 then
                 os.pullEvent("chunk_consumed")
             else
                 local chunk = buffer:next()
@@ -367,6 +368,11 @@ local function play_audio(buffer, title, on_first_chunk)
         local audiodevice = audiodevices[i]
         consumers[i] = function()
             while true do
+                -- Safety net: if this speaker is too far behind, skip ahead to resync
+                if write_index - cursors[i] > 5 then
+                    cursors[i] = write_index - 1
+                end
+
                 if cursors[i] < write_index then
                     local data = chunks[cursors[i]]
                     if data then
