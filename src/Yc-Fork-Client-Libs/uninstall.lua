@@ -3,14 +3,23 @@
 ]]
 
 local function question(message)
+    -- Save original terminal state
     local old_blink_state = term.getCursorBlink()
-    term.setCursorBlink(true) -- Ensure the cursor is visible for input
+    local old_text_color = term.getTextColor()
+    local old_bg_color = term.getBackgroundColor()
+
+    -- Ensure terminal is in a usable state for input
+    term.setCursorBlink(true)
+    term.setTextColor(colors.white)
+    term.setBackgroundColor(colors.black)
 
     term.write(message .. " [y/n] ")
-    -- Explicitly provide an empty string as the third argument to ensure input is not hidden.
-    local input = read(nil, nil, "")
+    local input = read() -- Use the standard read in a safe context
 
-    term.setCursorBlink(old_blink_state) -- Restore the original cursor state
+    -- Restore original terminal state
+    term.setCursorBlink(old_blink_state)
+    term.setTextColor(old_text_color)
+    term.setBackgroundColor(old_bg_color)
     print() -- Move to the next line for clean output
 
     -- Handle cases where the user terminates (Ctrl+T) during input
