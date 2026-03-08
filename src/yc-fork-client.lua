@@ -124,9 +124,22 @@ parser:option "--fps"
     :description "Force sanjuuni to use a specified frame rate"
     :target "force_fps"
 
+parser:flag(nil, "--debug")
+    :description "Enables debug logging for device connections."
+    :target "debug"
+    :action "store_true"
+
 -- stylua: ignore end
 
 local args = parser:parse({ ... })
+
+local function debug_log(color, message)
+    if args.debug then
+        term.setTextColor(color)
+        print(message)
+        term.setTextColor(colors.white)
+    end
+end
 
 if args.force_fps then
     args.force_fps = tonumber(args.force_fps)
@@ -340,8 +353,7 @@ local function play_audio(buffer, title, on_first_chunk)
             end
             cleaned_up_until = min_cursor
 
-            -- Reduced buffer size from 32 to 2 to force tight synchronization
-            if write_index - min_cursor > 2 then
+            if write_index - min_cursor > 8 then -- Increased buffer slightly for stability
                 os.pullEvent("chunk_consumed")
             else
                 local chunk = buffer:next()
@@ -384,6 +396,12 @@ local function play_audio(buffer, title, on_first_chunk)
                 while true do
                     if audiodevice.dead then return end
 
+                    if not peripheral.isPresent(audiodevice.name) then
+                        audiodevice.dead = true
+                        debug_log(colors.red, "Tape drive disconnected: " .. (audiodevice.name or "unknown"))
+                        return
+                    end
+
                     if not audiodevice.cursor then audiodevice.cursor = 1 end
 
                     if write_index - audiodevice.cursor > 5 then
@@ -393,20 +411,13 @@ local function play_audio(buffer, title, on_first_chunk)
                     if audiodevice.cursor < write_index then
                         local data = chunks[audiodevice.cursor]
                         if data then
-                            local success = pcall(audiodevice.write, audiodevice, data.chunk, data.pcm)
-                            if not success then
-                                audiodevice.dead = true
-                                term.setTextColor(colors.red)
-                                print("Tape drive disconnected: " .. (audiodevice.name or "unknown"))
-                                term.setTextColor(colors.white)
-                                return
-                            end
+                            audiodevice:write(data.chunk, data.pcm)
                         end
                         audiodevice.cursor = audiodevice.cursor + 1
                         os.queueEvent("chunk_consumed")
                     else
                         if eof then
-                            pcall(audiodevice.play, audiodevice)
+                            audiodevice:play()
                             return
                         end
                         os.pullEvent("new_audio_chunk")
@@ -418,72 +429,74 @@ local function play_audio(buffer, title, on_first_chunk)
 
     -- Super consumer for all speakers (handles dynamic addition)
     local function speaker_driver()
+        local current_chunk_to_write = 1
         while true do
-            local work_done = false
-            local all_waiting_data = true
-            local all_full = true
-            local has_speakers = false
-
-            for i = 1, #audiodevices do
-                local dev = audiodevices[i]
-                if dev.speaker and not dev.dead then
-                    has_speakers = true
-                    -- Initialize cursor for new devices
-                    if not dev.cursor then
-                        dev.cursor = math.max(1, write_index - 1)
-                    end
-
-                    -- Sync logic
-                    if write_index - dev.cursor > 5 then
-                        dev.cursor = write_index - 1
-                    end
-
-                    if dev.cursor < write_index then
-                        all_waiting_data = false
-                        local data = chunks[dev.cursor]
-                        if data then
-                            -- Use non-blocking write
-                            local buffer = data.pcm
-                            if not buffer and decoder then
-                                buffer = decoder(data.chunk)
-                            end
-
-                            local success, result = pcall(dev.speaker.playAudio, buffer, dev.volume)
-
-                            if not success then
-                                dev.dead = true
-                                term.setTextColor(colors.red)
-                                print("Speaker disconnected: " .. (dev.name or "unknown"))
-                                term.setTextColor(colors.white)
-                            elseif result then
-                                dev.cursor = dev.cursor + 1
-                                work_done = true
-                                all_full = false
-                                os.queueEvent("chunk_consumed")
-                            end
-                        end
-                    else
-                        all_full = false -- Waiting for data, not full
+            if eof then
+                local all_caught_up = true
+                for _, dev in ipairs(audiodevices) do
+                    if dev.speaker and not dev.dead and dev.cursor < write_index then
+                        all_caught_up = false
+                        break
                     end
                 end
+                if all_caught_up then return end
             end
 
-            if eof and all_waiting_data then
-                return
+            if current_chunk_to_write >= write_index then
+                os.pullEvent("new_audio_chunk")
+                if eof and current_chunk_to_write >= write_index then return end
+                goto continue_driver_loop
             end
 
-            if not has_speakers then
-                os.pullEvent("new_audio_chunk") -- Just wait if no speakers
-            elseif work_done then
-                sleep(0) -- Yield to allow other coroutines (like producer) to run
-            else
-                if all_waiting_data then
-                    os.pullEvent("new_audio_chunk")
-                else
-                    -- All speakers that have data are full
+            local data = chunks[current_chunk_to_write]
+            if not data then
+                current_chunk_to_write = cleaned_up_until
+                debug_log(colors.yellow, "Speaker driver lagging, resyncing to chunk " .. current_chunk_to_write)
+                goto continue_driver_loop
+            end
+
+            local pcm_buffer = data.pcm
+            if not pcm_buffer and decoder then
+                pcm_buffer = decoder(data.chunk)
+                data.pcm = pcm_buffer
+            end
+
+            local all_speakers_wrote_chunk = false
+            while not all_speakers_wrote_chunk do
+                all_speakers_wrote_chunk = true
+                local has_active_speakers = false
+
+                for _, dev in ipairs(audiodevices) do
+                    if dev.speaker and not dev.dead then
+                        has_active_speakers = true
+                        if dev.cursor == current_chunk_to_write then
+                            if not peripheral.isPresent(dev.name) then
+                                dev.dead = true
+                                debug_log(colors.red, "Speaker disconnected: " .. (dev.name or "unknown"))
+                            else
+                                if dev.speaker.playAudio(pcm_buffer, dev.volume) then
+                                    dev.cursor = dev.cursor + 1
+                                else
+                                    all_speakers_wrote_chunk = false
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if not has_active_speakers then
+                    break
+                end
+
+                if not all_speakers_wrote_chunk then
                     os.pullEvent("speaker_audio_empty")
                 end
             end
+
+            os.queueEvent("chunk_consumed")
+            current_chunk_to_write = current_chunk_to_write + 1
+
+            ::continue_driver_loop::
         end
     end
 
@@ -502,37 +515,28 @@ local function play_audio(buffer, title, on_first_chunk)
                 end
             end
 
-            -- Check for disconnected devices
-            for _, dev in ipairs(audiodevices) do
-                if not dev.dead then
-                    if dev.speaker and not current_speakers[dev.name] then
-                        dev.dead = true
-                        term.setTextColor(colors.red)
-                        print("Speaker disconnected: " .. (dev.name or "unknown"))
-                        term.setTextColor(colors.white)
-                    elseif dev.tape and not current_tapes[dev.name] then
-                        dev.dead = true
-                        term.setTextColor(colors.red)
-                        print("Tape drive disconnected: " .. (dev.name or "unknown"))
-                        term.setTextColor(colors.white)
+            local function find_min_cursor()
+                local min_c = write_index
+                local has_active = false
+                for _, d in ipairs(audiodevices) do
+                    if not d.dead and d.cursor and d.cursor < min_c then
+                        min_c = d.cursor
+                        has_active = true
                     end
                 end
+                if has_active then return min_c else return math.max(1, write_index - 1) end
             end
 
-            -- Check for new or reconnected devices
             for name, _ in pairs(current_speakers) do
                 local known = false
                 for _, dev in ipairs(audiodevices) do
                     if dev.name == name then
                         known = true
                         if dev.dead then
-                            -- Revive
                             dev.speaker = peripheral.wrap(name)
                             dev.dead = false
-                            dev.cursor = write_index - 1
-                            term.setTextColor(colors.green)
-                            print("Speaker reconnected: " .. name)
-                            term.setTextColor(colors.white)
+                            dev.cursor = find_min_cursor()
+                            debug_log(colors.green, "Speaker reconnected: " .. name)
                         end
                         break
                     end
@@ -544,11 +548,9 @@ local function play_audio(buffer, title, on_first_chunk)
                     if not dev:validate() then
                         dev:setLabel(title)
                         dev:setVolume(args.volume)
-                        dev.cursor = write_index - 1
+                        dev.cursor = find_min_cursor()
                         table.insert(audiodevices, dev)
-                        term.setTextColor(colors.green)
-                        print("New speaker detected! (Joining now)")
-                        term.setTextColor(colors.white)
+                        debug_log(colors.green, "New speaker detected! (Joining now)")
                     end
                 end
             end
@@ -559,13 +561,10 @@ local function play_audio(buffer, title, on_first_chunk)
                     if dev.name == name then
                         known = true
                         if dev.dead then
-                             -- Revive tape
                              dev.tape = peripheral.wrap(name)
                              dev.dead = false
-                             dev.cursor = write_index - 1
-                             term.setTextColor(colors.green)
-                             print("Tape drive reconnected: " .. name)
-                             term.setTextColor(colors.white)
+                             dev.cursor = find_min_cursor()
+                             debug_log(colors.green, "Tape drive reconnected: " .. name)
                         end
                         break
                     end
@@ -577,18 +576,15 @@ local function play_audio(buffer, title, on_first_chunk)
                     if not dev:validate() then
                         dev:setLabel(title)
                         dev:setVolume(args.volume)
-                        dev.cursor = write_index - 1
+                        dev.cursor = find_min_cursor()
                         table.insert(audiodevices, dev)
-                        term.setTextColor(colors.green)
-                        print("New tape drive detected! (Will join next track)")
-                        term.setTextColor(colors.white)
+                        debug_log(colors.green, "New tape drive detected! (Will join next track)")
                     end
                 end
             end
         end
     end
 
-    -- We need to run the scanner in parallel with the rest
     parallel.waitForAll(producer, device_scanner, speaker_driver, table.unpack(consumers))
 end
 
