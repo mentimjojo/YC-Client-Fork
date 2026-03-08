@@ -7,7 +7,7 @@ Github Repository: https://github.com/Commandcracker/YouCube
 License: GPL-3.0
 ]]
 
-local _VERSION = "0.1.1"
+local _VERSION = "0.1.2"
 
 -- Libraries - OpenLibrarieLoader v1.0.1 --
 
@@ -234,7 +234,7 @@ local audiodevices = get_audiodevices()
 -- update check --
 
 local function get_versions()
-    local url = "https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/main/versions.json"
+    local url = "https://raw.githubusercontent.com/YC-Fork/YC-Server-Fork/main/versions.json"
 
     -- Check if the URL is valid
     local ok, err = http.checkURL(url)
