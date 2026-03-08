@@ -7,7 +7,8 @@ local function question(message)
     term.setCursorBlink(true) -- Ensure the cursor is visible for input
 
     term.write(message .. " [y/n] ")
-    local input = read()
+    -- Explicitly provide an empty string as the third argument to ensure input is not hidden.
+    local input = read(nil, nil, "")
 
     term.setCursorBlink(old_blink_state) -- Restore the original cursor state
     print() -- Move to the next line for clean output
@@ -17,7 +18,8 @@ local function question(message)
         return false
     end
 
-    return input:lower() == "y"
+    local answer = input:lower()
+    return answer == "y" or answer == "yes"
 end
 
 if not question("Are you sure you want to uninstall YC-Client-Fork?") then
