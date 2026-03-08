@@ -7,7 +7,7 @@ Github Repository: https://github.com/CC-YouCube
 Homepage: https://youcube.madefor.cc/
 License: GPL-3.0
 ]]
--- OpenInstaller v1.0.0 (based on wget)
+-- OpenInstaller v1.0.1 (based on wget)
 
 local BASE_URL = "https://raw.githubusercontent.com/YC-Fork/YC-Client-Fork/main/src/"
 
@@ -18,48 +18,13 @@ local files = {
     ["./Yc-Fork-Client-Libs/semver.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/semver.lua",
     ["./Yc-Fork-Client-Libs/argparse.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/argparse.lua",
     ["./Yc-Fork-Client-Libs/string_pack.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/string_pack.lua",
+    ["./Yc-Fork-Client-Libs/uninstall.lua"] = BASE_URL .. "Yc-Fork-Client-Libs/uninstall.lua",
 }
 
 if not http then
     printError("OpenInstaller requires the http API")
     printError("Set http.enabled to true in the ComputerCraft config")
     return
-end
-
-local function tableContains(_table, element)
-    for _, value in pairs(_table) do
-        if value == element then
-            return true
-        end
-    end
-    return false
-end
-
-local function writeColoured(text, colour)
-    term.setTextColour(colour)
-    term.write(text)
-end
-
-local function question(message)
-    local previous_colour = term.getTextColour()
-
-    writeColoured(message .. "? [", colors.orange)
-    writeColoured("Y", colors.lime)
-    writeColoured("/", colors.orange)
-    writeColoured("n", colors.red)
-    writeColoured("] ", colors.orange)
-
-    -- Reset colour
-    term.setTextColour(previous_colour)
-
-    local input_char = read():sub(1, 1):lower()
-    local accept_chars = { "o", "k", "y", "j", "" }
-
-    if tableContains(accept_chars, input_char) then
-        return true
-    end
-
-    return false
 end
 
 local unknown_error = "Unknown error"
@@ -89,25 +54,26 @@ end
 
 for path, download_url in pairs(files) do
     local resolved_path = shell.resolve(path)
-    if fs.exists(resolved_path) then
-        if not question(('"%s" already exists. Override'):format(path)) then
-            return
-        end
+
+    -- Create directory if it doesn't exist
+    local dir = fs.getDir(resolved_path)
+    if not fs.exists(dir) then
+        fs.makeDir(dir)
     end
 
     local response_body = http_get(download_url)
-
-    local file, file_open_error_message = fs.open(resolved_path, "wb")
-    if not file then
-        printError(('Failed to save "%s" (%s).'):format(path, file_open_error_message or unknown_error))
-        return
+    if response_body then
+        local file, file_open_error_message = fs.open(resolved_path, "wb")
+        if not file then
+            printError(('Failed to save "%s" (%s).'):format(path, file_open_error_message or unknown_error))
+        else
+            file.write(response_body)
+            file.close()
+            term.setTextColor(colors.lime)
+            print(('Downloaded "%s"'):format(path))
+            term.setTextColor(colors.white)
+        end
     end
-
-    file.write(response_body)
-    file.close()
-
-    term.setTextColour(colors.lime)
-    print(('Downloaded "%s"'):format(path))
 end
 
-
+print("Installation/Update complete!")
