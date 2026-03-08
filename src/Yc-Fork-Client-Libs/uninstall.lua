@@ -3,14 +3,29 @@
 ]]
 
 local function question(message)
+    local old_blink_state = term.getCursorBlink()
+    term.setCursorBlink(true) -- Ensure the cursor is visible for input
+
     term.write(message .. " [y/n] ")
-    return read():lower() == "y"
+    local input = read()
+
+    term.setCursorBlink(old_blink_state) -- Restore the original cursor state
+    print() -- Move to the next line for clean output
+
+    -- Handle cases where the user terminates (Ctrl+T) during input
+    if not input then
+        return false
+    end
+
+    return input:lower() == "y"
 end
 
 if not question("Are you sure you want to uninstall YC-Client-Fork?") then
     print("Uninstall cancelled.")
     return
 end
+
+print("Uninstalling YC-Client-Fork...")
 
 local files_to_delete = {
     "./yc-fork-client.lua",
