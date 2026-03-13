@@ -398,7 +398,7 @@ local function play_audio(buffer, title, on_first_chunk)
 
                     if not peripheral.isPresent(audiodevice.name) then
                         audiodevice.dead = true
-                        debug_log(colors.red, "Tape drive disconnected: " .. (audiodeodevice.name or "unknown"))
+                        debug_log(colors.red, "Tape drive disconnected: " .. (audiodevice.name or "unknown"))
                         return
                     end
 
@@ -712,12 +712,7 @@ local function play(url)
         while true do
             os.queueEvent("youcube:fill_buffers")
 
-            local event, p1, p2, p3 = os.pullEventRaw()
-
-            if event == "playback_done" then
-                os.queueEvent(event, p1, p2, p3)
-                break
-            end
+            local event = os.pullEventRaw()
 
             if event == "terminate" then
                 libs.serverapi.reset_term()
@@ -767,55 +762,38 @@ local function play(url)
 
     local function _hotkey_handler()
         while true do
-            local event, key = os.pullEvent()
+            local _, key = os.pullEvent("key")
 
-            if event == "playback_done" then
-                os.queueEvent(event)
+            if key == skip_key then
+                back_buffer[#back_buffer + 1] = url --finished playing, push the value to the back buffer
+                if #back_buffer > max_back then
+                    table.remove(back_buffer, 1) --remove it from the front of the buffer
+                end
+                if not args.no_video then
+                    libs.serverapi.reset_term()
+                end
                 break
             end
 
-            if event == "key" then
-                if key == skip_key then
-                    back_buffer[#back_buffer + 1] = url --finished playing, push the value to the back buffer
-                    if #back_buffer > max_back then
-                        table.remove(back_buffer, 1) --remove it from the front of the buffer
-                    end
-                    if not args.no_video then
-                        libs.serverapi.reset_term()
-                    end
-                    break
+            if key == restart_key then
+                queue[#queue + 1] = url --add the current song to upcoming
+                if not args.no_video then
+                    libs.serverapi.reset_term()
                 end
+                restart = true
+                break
+            end
 
-                if key == restart_key then
-                    queue[#queue + 1] = url --add the current song to upcoming
-                    if not args.no_video then
-                        libs.serverapi.reset_term()
-                    end
-                    restart = true
-                    break
-                end
-
-                if key == back_key then
-                    queue[#queue + 1] = url --add the current song to upcoming
-                    local prev = table.remove(back_buffer)
-                    if prev then --nil/false check
-                        queue[#queue + 1] = prev --add previous song to upcoming
-                    end
-                    if not args.no_video then
-                        libs.serverapi.reset_term()
-                    end
-                    break
-                end
+             if key == back_key then
+                 -- This logic seems flawed for a global queue, but adhering to user structure
+                 -- It likely needs to signal "back" to the caller
+                 break
             end
         end
     end
 
-    local function play_media_wrapper()
-        _play_media()
-        os.queueEvent("playback_done")
-    end
-
-    parallel.waitForAll(fill_buffers, play_media_wrapper, _hotkey_handler)
+    -- Reverting parallel structure to allow hotkeys to interrupt playback
+    parallel.waitForAny(fill_buffers, _play_media, _hotkey_handler)
 
     if data.playlist_videos then
         return data.playlist_videos
@@ -836,10 +814,33 @@ local function play_playlist(playlist)
     if args.shuffle then
         queue = shuffle_playlist(queue)
     end
-    while #queue > 0 do
-        if restart then break end
+    while #queue ~= 0 do
         local pl = table.remove(queue, 1)
-        play(pl)
+
+        -- Re-introducing the hotkey handler specific for playlist navigation
+        -- Note: The original code had nested hotkey handlers. This one handles "back"
+        -- specifically during playlist playback to modify the queue.
+        local function handle_back_hotkey()
+            while true do
+                local _, key = os.pullEvent("key")
+                if key == back_key then
+                    queue[#queue + 1] = pl --add the current song to upcoming
+                    local prev = table.remove(back_buffer)
+                    if prev then --nil/false check
+                        queue[#queue + 1] = prev --add previous song to upcoming
+                    end
+                    if not args.no_video then
+                        libs.serverapi.reset_term()
+                    end
+                    break -- This break exits handle_back_hotkey
+                end
+            end
+        end
+
+        -- Using waitForAny here allows either the song to finish OR the back key to be pressed
+        parallel.waitForAny(handle_back_hotkey, function()
+            play(pl) --play the url
+        end)
     end
 end
 
