@@ -1,19 +1,8 @@
 --[[
-_   _ ____ _  _ ____ _  _ ___  ____
- \_/  |  | |  | |    |  | |__] |___
-  |   |__| |__| |___ |__| |__] |___
-
-Github Repository: https://github.com/Commandcracker/YouCube
-License: GPL-3.0
+YC-Client-Fork
 ]]
 
 local _VERSION = "0.1.2"
-
--- Libraries - OpenLibrarieLoader v1.0.1 --
-
---TODO: Optional libs:
--- For something like a JSON lib that is only needed for older CC Versions or
--- optional logging.lua support
 
 local function is_lib(libs, lib)
     for i = 1, #libs do
@@ -605,7 +594,8 @@ local function play(url)
     -- Refresh audio devices at the start of each track
     audiodevices = get_audiodevices()
 
-    restart = false
+    local exit_reason = "finished"
+
     print("Requesting media ...")
     local function request_media_once()
         if not args.no_video then
@@ -644,7 +634,8 @@ local function play(url)
         data, err = request_media_once()
     end
     if err then
-        error(err.message)
+        printError("Server Error: " .. err.message)
+        return nil, "error"
     end
 
     local buffer_x, buffer_y
@@ -772,21 +763,23 @@ local function play(url)
                 if not args.no_video then
                     libs.serverapi.reset_term()
                 end
+                exit_reason = "skip"
                 break
             end
 
             if key == restart_key then
-                queue[#queue + 1] = url --add the current song to upcoming
                 if not args.no_video then
                     libs.serverapi.reset_term()
                 end
-                restart = true
+                exit_reason = "restart"
                 break
             end
 
              if key == back_key then
-                 -- This logic seems flawed for a global queue, but adhering to user structure
-                 -- It likely needs to signal "back" to the caller
+                 if not args.no_video then
+                     libs.serverapi.reset_term()
+                 end
+                 exit_reason = "back"
                  break
             end
         end
@@ -795,9 +788,14 @@ local function play(url)
     -- Reverting parallel structure to allow hotkeys to interrupt playback
     parallel.waitForAny(fill_buffers, _play_media, _hotkey_handler)
 
-    if data.playlist_videos then
-        return data.playlist_videos
+    if exit_reason == "finished" then
+        back_buffer[#back_buffer + 1] = url
+        if #back_buffer > max_back then
+            table.remove(back_buffer, 1)
+        end
     end
+
+    return data.playlist_videos, exit_reason
 end
 
 local function shuffle_playlist(playlist)
@@ -817,30 +815,17 @@ local function play_playlist(playlist)
     while #queue ~= 0 do
         local pl = table.remove(queue, 1)
 
-        -- Re-introducing the hotkey handler specific for playlist navigation
-        -- Note: The original code had nested hotkey handlers. This one handles "back"
-        -- specifically during playlist playback to modify the queue.
-        local function handle_back_hotkey()
-            while true do
-                local _, key = os.pullEvent("key")
-                if key == back_key then
-                    queue[#queue + 1] = pl --add the current song to upcoming
-                    local prev = table.remove(back_buffer)
-                    if prev then --nil/false check
-                        queue[#queue + 1] = prev --add previous song to upcoming
-                    end
-                    if not args.no_video then
-                        libs.serverapi.reset_term()
-                    end
-                    break -- This break exits handle_back_hotkey
-                end
-            end
-        end
+        local _, reason = play(pl)
 
-        -- Using waitForAny here allows either the song to finish OR the back key to be pressed
-        parallel.waitForAny(handle_back_hotkey, function()
-            play(pl) --play the url
-        end)
+        if reason == "restart" then
+             table.insert(queue, 1, pl)
+        elseif reason == "back" then
+             table.insert(queue, 1, pl)
+             local prev = table.remove(back_buffer)
+             if prev then
+                 table.insert(queue, 1, prev)
+             end
+        end
     end
 end
 
@@ -855,7 +840,11 @@ local function main()
         term.setTextColor(colors.white)
     end
 
-    local playlist_videos = play(args.URL)
+    local playlist_videos, reason = play(args.URL)
+
+    while reason == "restart" do
+        playlist_videos, reason = play(args.URL)
+    end
 
     if args.loop == true then
         while true do
@@ -871,10 +860,6 @@ local function main()
             end
         end
         play_playlist(playlist_videos)
-    end
-
-    while restart do
-        play(args.URL)
     end
 
     serverapi.websocket.close()
